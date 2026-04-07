@@ -1,0 +1,21 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+  background: #080810;
+}
+body {
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+button, input, textarea {
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-thumb { background: #1e1e35; border-radius: 2px; }
