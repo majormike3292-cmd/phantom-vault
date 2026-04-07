@@ -27,7 +27,7 @@ export default function PhantomVault() {
   const [storedPinHash, setStoredPinHash] = useState(null)
   const [wrongAttempts, setWrongAttempts] = useState(0)
   const [lockoutTime, setLockoutTime] = useState(0)
-  const [vaultTab, setVaultTab] = useState('Files')
+  const [vaultTab, setVaultTab] = useState('Disguise')
   const [notes, setNotes] = useState([])
   const [activityLog, setActivityLog] = useState([])
   const [files, setFiles] = useState([{ id:1, name:'SecretDoc.txt' }])
@@ -180,10 +180,40 @@ export default function PhantomVault() {
   }
 
   // ---------------------------
-  // Render vault tab content
+  // Vault Tab Render
   // ---------------------------
   const renderVaultTab = () => {
     switch(vaultTab){
+      case 'Disguise':
+        return <div style={{padding:'10px'}}>Current Mode: {disguiseMode}</div>
+      case 'Daily Pulse':
+        return (
+          <div style={{padding:'10px'}}>
+            <h3>News Feed</h3>
+            {[...Array(5)].map((_,i)=><p key={i}>Breaking news #{i+1}...</p>)}
+          </div>
+        )
+      case 'ArcadeBox':
+        return (
+          <div style={{padding:'10px'}}>
+            <h3>Games</h3>
+            {['Space Invaders','Tetris','Phantom Runner'].map(g=><button key={g} style={{margin:'5px'}}>{g}</button>)}
+          </div>
+        )
+      case 'QuickLaunch':
+        return (
+          <div style={{padding:'10px'}}>
+            <h3>Home Apps</h3>
+            {['Clock','Calendar','Mail'].map(a=><button key={a} style={{margin:'5px'}}>{a}</button>)}
+          </div>
+        )
+      case 'SkyWatch':
+        return (
+          <div style={{padding:'10px'}}>
+            <h3>Weather</h3>
+            <p>Sunny 27°C, Wind 5 km/h</p>
+          </div>
+        )
       case 'Files':
         return <div>{files.map(f=><div key={f.id}>{f.name}</div>)}</div>
       case 'Notes':
@@ -234,7 +264,7 @@ export default function PhantomVault() {
         </div>
 
         <div style={{marginTop:'20px'}}>
-          <strong>Tabs:</strong> {['Files','Notes','Settings','Logs'].map(t=><button key={t} onClick={()=>{setVaultTab(t);localStorage.setItem('phantom.tab',t)}}>{t}</button>)}
+          <strong>Tabs:</strong> {['Disguise','Daily Pulse','ArcadeBox','QuickLaunch','SkyWatch','Files','Notes','Settings','Logs'].map(t=><button key={t} onClick={()=>{setVaultTab(t);localStorage.setItem('phantom.tab',t)}} style={{margin:'3px'}}>{t}</button>)}
         </div>
 
         <div style={{marginTop:'20px'}}>
@@ -246,9 +276,6 @@ export default function PhantomVault() {
   )
 }
 
-// ---------------------------
-// Styles
-// ---------------------------
 export const styles = {
   container: {
     position: 'relative',
