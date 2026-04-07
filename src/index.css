@@ -19,3 +19,21 @@ button, input, textarea {
 }
 ::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-thumb { background: #1e1e35; border-radius: 2px; }
+@keyframes glowPulse {
+  0% {
+    text-shadow:
+      0 0 5px #00ffff,
+      0 0 10px #00ffff,
+      0 0 20px #00ffff,
+      0 0 40px #0ff,
+      0 0 80px #0ff;
+  }
+  100% {
+    text-shadow:
+      0 0 10px #00ffff,
+      0 0 20px #00ffff,
+      0 0 30px #00ffff,
+      0 0 50px #0ff,
+      0 0 100px #0ff;
+  }
+}
