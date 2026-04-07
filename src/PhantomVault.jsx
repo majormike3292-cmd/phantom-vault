@@ -1,105 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react'
 
-// ---------------------------
-// Utility functions
-// ---------------------------
-async function sha256Hex(input) {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input))
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('')
-}
+// Simple SHA-256 hash helper for PIN storage async function sha256Hex(input) { const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input)) return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('') }
 
-const THEMES = {
-  'Phantom Dark': { bg: '#080810', accent: '#00ffff', text: '#e2e8f0' },
-  'Neon Pulse': { bg: '#0a0a23', accent: '#ff00ff', text: '#f0f0f0' },
-  'Ghost White': { bg: '#f8f8f8', accent: '#ff4500', text: '#000' },
-  'Midnight Steel': { bg: '#12121f', accent: '#00ff7f', text: '#ccc' },
-  'Crimson Ops 🩸': { bg: '#1a0000', accent: '#ff0000', text: '#fff' },
-  'Aurora 🌊': { bg: '#001a33', accent: '#00ffff', text: '#fff' },
-}
+export default function PhantomVault() { const containerRef = useRef(null) const [unlocked, setUnlocked] = useState(false) const [inputPin, setInputPin] = useState('') const [storedPinHash, setStoredPinHash] = useState(null) const [wrongCount, setWrongCount] = useState(0) const [lockoutTimer, setLockoutTimer] = useState(0) const [currentTab, setCurrentTab] = useState('files')
 
-// ---------------------------
-// PhantomVault Component
-// ---------------------------
-export default function PhantomVault() {
-  const canvasRef = useRef(null)
-  const [theme, setTheme] = useState('Phantom Dark')
-  const [pinInput, setPinInput] = useState('')
-  const [storedPinHash, setStoredPinHash] = useState(null)
-  const [wrongAttempts, setWrongAttempts] = useState(0)
-  const [lockoutTime, setLockoutTime] = useState(0)
-  const [vaultTab, setVaultTab] = useState('Files')
-  const [notes, setNotes] = useState([]) // encrypted notepad
-  const [activityLog, setActivityLog] = useState([])
-  const [particleCount, setParticleCount] = useState(50)
-  const [particles, setParticles] = useState([])
+// Load or initialize hashed PIN useEffect(() => { ;(async () => { const stored = localStorage.getItem('phantom.pinHash') if (stored) setStoredPinHash(stored) else { const hash = await sha256Hex('password') // default PIN localStorage.setItem('phantom.pinHash', hash) setStoredPinHash(hash) } })() }, [])
 
-  // ---------------------------
-  // LocalStorage Init
-  // ---------------------------
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('phantom.theme')
-    if (savedTheme) setTheme(savedTheme)
+// Handle PIN input const handlePinKey = async (key) => { if (lockoutTimer > 0) return const next = inputPin + key setInputPin(next) if (next.length === 4) { const hash = await sha256Hex(next) if (hash === storedPinHash) { setUnlocked(true) setInputPin('') setWrongCount(0) setCurrentTab('files') } else { setWrongCount(prev => prev + 1) setInputPin('') if (wrongCount + 1 >= 5) { setLockoutTimer(60) // 60s lockout } } } }
 
-    const savedTab = localStorage.getItem('phantom.tab')
-    if (savedTab) setVaultTab(savedTab)
+// Lockout countdown useEffect(() => { if (lockoutTimer <= 0) return const interval = setInterval(() => { setLockoutTimer(prev => { if (prev <= 1) return 0 return prev - 1 }) }, 1000) return () => clearInterval(interval) }, [lockoutTimer])
 
-    const savedNotes = JSON.parse(localStorage.getItem('phantom.notes') || '[]')
-    setNotes(savedNotes)
+// Shake-to-exit listener useEffect(() => { const handleMotion = (e) => { const { x, y, z } = e.accelerationIncludingGravity if (Math.abs(x) + Math.abs(y) + Math.abs(z) > 30) setUnlocked(false) } if (typeof DeviceMotionEvent !== 'undefined' && DeviceMotionEvent.requestPermission) { DeviceMotionEvent.requestPermission().then(response => { if (response === 'granted') window.addEventListener('devicemotion', handleMotion) }) } else { window.addEventListener('devicemotion', handleMotion) } return () => window.removeEventListener('devicemotion', handleMotion) }, [])
 
-    const savedLog = JSON.parse(localStorage.getItem('phantom.log') || '[]')
-    setActivityLog(savedLog)
-
-    (async () => {
-      const storedHash = localStorage.getItem('phantom.pinHash')
-      if (storedHash) setStoredPinHash(storedHash)
-      else {
-        const defaultHash = await sha256Hex('password') // default PIN
-        localStorage.setItem('phantom.pinHash', defaultHash)
-        setStoredPinHash(defaultHash)
-      }
-    })()
-  }, [])
-
-  // ---------------------------
-  // Theme persistence
-  // ---------------------------
-  useEffect(() => {
-    localStorage.setItem('phantom.theme', theme)
-    const t = THEMES[theme]
-    if (t) {
-      Object.entries(t).forEach(([k,v]) => {
-        document.documentElement.style.setProperty(`--${k}`, v)
-      })
-    }
-  }, [theme])
-
-  // ---------------------------
-  // Lockout timer
-  // ---------------------------
-  useEffect(() => {
-    if (lockoutTime > 0) {
-      const timer = setInterval(() => setLockoutTime(t => Math.max(t - 1, 0)), 1000)
-      return () => clearInterval(timer)
-    }
-  }, [lockoutTime])
-
-  // ---------------------------
-  // Particle animation
-  // ---------------------------
-  useEffect(() => {
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    let width = canvas.width = window.innerWidth
-    let height = canvas.height = window.innerHeight
-    let pts = Array.from({ length: particleCount }, () => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      size: Math.random() * 2 + 1,
-      speedX: Math.random() * 1 - 0.5,
-      speedY: Math.random() * 1 - 0.5,
-    }))
-    setParticles(pts)
-
-    const animate = () => {
-      ctx.clearRect(0,0,width,height)
-      pts.for
+// Render PIN entry if (!unlocked) { return ( <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}> <h2>Enter PIN</h2> {lockoutTimer > 0 ? ( <p>Locked! {lockoutTimer}s remaining</p> ) : ( <div> {[1,2,3,4,5,6,7,8,9,0].map(n => ( <button key={n} onClick={() => handlePinKey(n.toString())}>{n}</button> ))} </div>
