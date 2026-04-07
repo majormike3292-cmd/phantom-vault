@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 
 // ---------------------------
-// Utility functions
+// Utilities
 // ---------------------------
 async function sha256Hex(input) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input))
@@ -28,8 +28,10 @@ export default function PhantomVault() {
   const [wrongAttempts, setWrongAttempts] = useState(0)
   const [lockoutTime, setLockoutTime] = useState(0)
   const [vaultTab, setVaultTab] = useState('Files')
-  const [notes, setNotes] = useState([]) // encrypted notepad
+  const [notes, setNotes] = useState([])
   const [activityLog, setActivityLog] = useState([])
+  const [files, setFiles] = useState([{ id:1, name:'SecretDoc.txt' }])
+  const [disguiseMode, setDisguiseMode] = useState('Default')
   const [particleCount, setParticleCount] = useState(50)
   const [particles, setParticles] = useState([])
 
@@ -49,6 +51,9 @@ export default function PhantomVault() {
     const savedLog = JSON.parse(localStorage.getItem('phantom.log') || '[]')
     setActivityLog(savedLog)
 
+    const savedDisguise = localStorage.getItem('phantom.disguise')
+    if (savedDisguise) setDisguiseMode(savedDisguise)
+
     (async () => {
       const storedHash = localStorage.getItem('phantom.pinHash')
       if (storedHash) setStoredPinHash(storedHash)
@@ -66,11 +71,7 @@ export default function PhantomVault() {
   useEffect(() => {
     localStorage.setItem('phantom.theme', theme)
     const t = THEMES[theme]
-    if (t) {
-      Object.entries(t).forEach(([k,v]) => {
-        document.documentElement.style.setProperty(`--${k}`, v)
-      })
-    }
+    if (t) Object.entries(t).forEach(([k,v]) => document.documentElement.style.setProperty(`--${k}`, v))
   }, [theme])
 
   // ---------------------------
@@ -105,10 +106,8 @@ export default function PhantomVault() {
       pts.forEach(p => {
         p.x += p.speedX
         p.y += p.speedY
-        if (p.x > width) p.x=0
-        if (p.x<0)p.x=width
-        if (p.y>height)p.y=0
-        if (p.y<0)p.y=height
+        if (p.x>width) p.x=0; if (p.x<0)p.x=width
+        if (p.y>height)p.y=0; if (p.y<0)p.y=height
         ctx.fillStyle = THEMES[theme].accent
         ctx.beginPath()
         ctx.arc(p.x,p.y,p.size,0,Math.PI*2)
@@ -117,21 +116,18 @@ export default function PhantomVault() {
       requestAnimationFrame(animate)
     }
     animate()
-    window.addEventListener('resize', () => {
-      width = canvas.width = window.innerWidth
-      height = canvas.height = window.innerHeight
-    })
+    window.addEventListener('resize',()=>{width=canvas.width=window.innerWidth;height=canvas.height=window.innerHeight})
   }, [particleCount, theme])
 
   // ---------------------------
-  // Shake-to-exit (mobile)
+  // Shake-to-exit
   // ---------------------------
   useEffect(() => {
     const handleMotion = e => {
       const acc = e.accelerationIncludingGravity
       if (!acc) return
       const total = Math.abs(acc.x)+Math.abs(acc.y)+Math.abs(acc.z)
-      if (total > 25) alert('Fast Exit triggered!') // replace with real exit
+      if (total > 25) alert('Fast Exit triggered!')
     }
     if (typeof DeviceMotionEvent !== 'undefined' && DeviceMotionEvent.requestPermission) {
       DeviceMotionEvent.requestPermission().then(p => p==='granted' && window.addEventListener('devicemotion', handleMotion))
@@ -170,9 +166,6 @@ export default function PhantomVault() {
     localStorage.setItem('phantom.log', JSON.stringify(updated))
   }
 
-  // ---------------------------
-  // Notes save/delete
-  // ---------------------------
   const saveNote = (text) => {
     const updated = [...notes, { id: Date.now(), text }]
     setNotes(updated)
@@ -187,8 +180,43 @@ export default function PhantomVault() {
   }
 
   // ---------------------------
-  // Render
+  // Render vault tab content
   // ---------------------------
+  const renderVaultTab = () => {
+    switch(vaultTab){
+      case 'Files':
+        return <div>{files.map(f=><div key={f.id}>{f.name}</div>)}</div>
+      case 'Notes':
+        return (
+          <div>
+            <input type="text" placeholder="New note" id="noteInput"/>
+            <button onClick={()=>{const val=document.getElementById('noteInput').value;if(val){saveNote(val);document.getElementById('noteInput').value=''}}}>Save</button>
+            <ul>{notes.map(n=><li key={n.id}>{n.text} <button onClick={()=>deleteNote(n.id)}>Delete</button></li>)}</ul>
+          </div>
+        )
+      case 'Settings':
+        return (
+          <div>
+            <div>
+              <label>Theme:</label>
+              <select value={theme} onChange={e=>setTheme(e.target.value)}>
+                {Object.keys(THEMES).map(t=><option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label>Disguise Mode:</label>
+              <select value={disguiseMode} onChange={e=>{setDisguiseMode(e.target.value);localStorage.setItem('phantom.disguise', e.target.value)}}>
+                {['Default','News','GameStore','Home','Weather','Music'].map(d=><option key={d}>{d}</option>)}
+              </select>
+            </div>
+          </div>
+        )
+      case 'Logs':
+        return <ul>{activityLog.map((l,i)=><li key={i}>{l.ts}: {l.msg}</li>)}</ul>
+      default: return null
+    }
+  }
+
   return (
     <div style={styles.container}>
       <canvas ref={canvasRef} style={styles.particlesCanvas}></canvas>
@@ -197,12 +225,8 @@ export default function PhantomVault() {
       <h1 style={styles.glowText}>Phantom Vault v2</h1>
 
       <div style={{marginTop:'30px', width:'90%', maxWidth:'600px'}}>
-        <div>
-          <strong>Lockout Timer:</strong> {lockoutTime>0 ? `${lockoutTime}s` : 'Unlocked'}
-        </div>
-        <div>
-          <strong>Wrong Attempts:</strong> {wrongAttempts}
-        </div>
+        <div><strong>Lockout Timer:</strong> {lockoutTime>0 ? `${lockoutTime}s` : 'Unlocked'}</div>
+        <div><strong>Wrong Attempts:</strong> {wrongAttempts}</div>
 
         <div style={{marginTop:'10px'}}>
           <input type="password" value={pinInput} onChange={e=>setPinInput(e.target.value)} placeholder="Enter PIN" />
@@ -210,34 +234,12 @@ export default function PhantomVault() {
         </div>
 
         <div style={{marginTop:'20px'}}>
-          <strong>Tabs:</strong> 
-          {['Files','Notes','Settings','Logs'].map(t=>
-            <button key={t} onClick={()=>{setVaultTab(t); localStorage.setItem('phantom.tab',t)}}>{t}</button>
-          )}
+          <strong>Tabs:</strong> {['Files','Notes','Settings','Logs'].map(t=><button key={t} onClick={()=>{setVaultTab(t);localStorage.setItem('phantom.tab',t)}}>{t}</button>)}
         </div>
 
-        {vaultTab==='Notes' &&
-          <div style={{marginTop:'10px'}}>
-            <h3>Secret Notes</h3>
-            <input type="text" placeholder="New note" id="noteInput"/>
-            <button onClick={()=>{
-              const val = document.getElementById('noteInput').value
-              if(val) {saveNote(val); document.getElementById('noteInput').value=''}
-            }}>Save</button>
-            <ul>
-              {notes.map(n=><li key={n.id}>{n.text} <button onClick={()=>deleteNote(n.id)}>Delete</button></li>)}
-            </ul>
-          </div>
-        }
-
-        {vaultTab==='Logs' &&
-          <div style={{marginTop:'10px'}}>
-            <h3>Activity Log</h3>
-            <ul>
-              {activityLog.map((l,i)=><li key={i}>{l.ts}: {l.msg}</li>)}
-            </ul>
-          </div>
-        }
+        <div style={{marginTop:'20px'}}>
+          {renderVaultTab()}
+        </div>
 
       </div>
     </div>
@@ -278,7 +280,7 @@ export const styles = {
     zIndex:2,
     color:'var(--accent)',
     fontSize:'3rem',
-    textShadow:'0 0 5px var(--accent), 0 0 10px var(--accent), 0 0 20px var(--accent), 0 0 40px var(--accent)',
+    textShadow:'0 0 5px var(--accent),0 0 10px var(--accent),0 0 20px var(--accent),0 0 40px var(--accent)',
     animation:'glowPulse 2s infinite alternate'
   }
 }
